@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 
 namespace ZenQL.Parsing.Specs
@@ -7,7 +9,7 @@ namespace ZenQL.Parsing.Specs
     {
         public abstract class TokenizerSpec
         {
-            protected string[] Run(string query)
+            protected IReadOnlyCollection<string> Run(string query)
             {
                 var config = new QueryTokenizerConfig(
                     new []
@@ -28,7 +30,7 @@ namespace ZenQL.Parsing.Specs
             public void ShouldReturnSingleToken()
             {
                 const string expected = "name";
-                var result = Run(expected);
+                var result = Run(expected).ToArray();
 
                 Assert.That(result, Has.Length.EqualTo(1));
                 Assert.That(result[0], Is.EqualTo(expected));
@@ -42,7 +44,7 @@ namespace ZenQL.Parsing.Specs
             {
                 var result = Run("   ");
 
-                Assert.That(result, Has.Length.EqualTo(0));
+                Assert.That(result, Has.Count.EqualTo(0));
             }
         }
 
@@ -53,7 +55,7 @@ namespace ZenQL.Parsing.Specs
             {
                 var result = Run(null);
 
-                Assert.That(result, Has.Length.EqualTo(0));
+                Assert.That(result, Has.Count.EqualTo(0));
             }
         }
 
@@ -64,7 +66,7 @@ namespace ZenQL.Parsing.Specs
             {
                 var result = Run("name =");
 
-                Assert.That(result, Has.Length.EqualTo(2));
+                Assert.That(result, Has.Count.EqualTo(2));
             }
         }
 
@@ -73,7 +75,7 @@ namespace ZenQL.Parsing.Specs
             [Test]
             public void ShouldReturnTokens()
             {
-                var result = Run("name = test");
+                var result = Run("name = test").ToArray();
 
                 Assert.That(result, Has.Length.EqualTo(3));
                 Assert.That(result[0], Is.EqualTo("name"));
@@ -87,7 +89,7 @@ namespace ZenQL.Parsing.Specs
             [Test]
             public void ShouldReturnTokens()
             {
-                var result = Run(" name   = test ");
+                var result = Run(" name   = test ").ToArray();
 
                 Assert.That(result, Has.Length.EqualTo(3));
                 Assert.That(result[0], Is.EqualTo("name"));
@@ -101,7 +103,7 @@ namespace ZenQL.Parsing.Specs
             [Test]
             public void ShouldReturnTokens()
             {
-                var result = Run("\"First name\" = Ken");
+                var result = Run("\"First name\" = Ken").ToArray();
 
                 Assert.That(result, Has.Length.EqualTo(3));
                 Assert.That(result[0], Is.EqualTo("\"First name\""));
@@ -115,7 +117,7 @@ namespace ZenQL.Parsing.Specs
             [Test]
             public void ShouldReturnTokens()
             {
-                var result = Run("'First name' = Ken");
+                var result = Run("'First name' = Ken").ToArray();
 
                 Assert.That(result, Has.Length.EqualTo(3));
                 Assert.That(result[0], Is.EqualTo("'First name'"));
@@ -129,7 +131,7 @@ namespace ZenQL.Parsing.Specs
             [Test]
             public void ShouldReturnTokens()
             {
-                var result = Run("name = \"Ken Dodd\"");
+                var result = Run("name = \"Ken Dodd\"").ToArray();
 
                 Assert.That(result, Has.Length.EqualTo(3));
                 Assert.That(result[0], Is.EqualTo("name"));
@@ -143,7 +145,7 @@ namespace ZenQL.Parsing.Specs
             [Test]
             public void ShouldReturnTokens()
             {
-                var result = Run("name = 'Ken Dodd'");
+                var result = Run("name = 'Ken Dodd'").ToArray();
 
                 Assert.That(result, Has.Length.EqualTo(3));
                 Assert.That(result[0], Is.EqualTo("name"));
@@ -152,17 +154,31 @@ namespace ZenQL.Parsing.Specs
             }
         }
 
-        public class OperatorCharBunched : TokenizerSpec
+        public class OperatorCharBunchedWithNoQuotes : TokenizerSpec
         {
             [Test]
             public void ShouldReturnTokens()
             {
-                var result = Run("name=Ken");
+                var result = Run("name=Ken").ToArray();
 
                 Assert.That(result, Has.Length.EqualTo(3));
                 Assert.That(result[0], Is.EqualTo("name"));
                 Assert.That(result[1], Is.EqualTo("="));
-                Assert.That(result[2], Is.EqualTo("'Ken Dodd'"));
+                Assert.That(result[2], Is.EqualTo("Ken"));
+            }
+        }
+
+        public class OperatorCharBunchedWithQuotes : TokenizerSpec
+        {
+            [Test]
+            public void ShouldReturnTokens()
+            {
+                var result = Run("name='Ken dodd'").ToArray();
+
+                Assert.That(result, Has.Length.EqualTo(3));
+                Assert.That(result[0], Is.EqualTo("name"));
+                Assert.That(result[1], Is.EqualTo("="));
+                Assert.That(result[2], Is.EqualTo("Ken"));
             }
         }
     }

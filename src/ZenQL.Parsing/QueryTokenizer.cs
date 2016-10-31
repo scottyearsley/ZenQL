@@ -1,52 +1,7 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 
 namespace ZenQL.Parsing
 {
-    public class QueryTokenizerConfig
-    {
-        public IEnumerable<ContainerTokens> ContainerTokens { get; }
-        public IEnumerable<string> Operators { get; }
-
-        public QueryTokenizerConfig(IEnumerable<ContainerTokens> containerTokens, IEnumerable<string> operators)
-        {
-            ContainerTokens = containerTokens;
-            Operators = operators;
-        }
-
-        public bool ContainsStartTokenOf(char item)
-        {
-            return ContainerTokens.Any(t => t.StartToken == item.ToString());
-        }
-
-        public bool ContainsEndTokenOf(char item)
-        {
-            return ContainerTokens.Any(t => t.EndToken == item.ToString());
-        }
-
-        public bool IsKnownOperator(string item)
-        {
-            return Operators.Any(o => o == item);
-        }
-
-        public bool IsStartOfKnownOperator(string item)
-        {
-            return Operators.Any(o => o.StartsWith(item) && o.Length > 1);
-        }
-    }
-
-    public class ContainerTokens
-    {
-        public string StartToken { get; }
-        public string EndToken { get; }
-
-        public ContainerTokens(string startToken, string endToken)
-        {
-            StartToken = startToken;
-            EndToken = endToken;
-        }
-    }
-
     public class QueryTokenizer : IQueryTokenizer
     {
         private readonly QueryTokenizerConfig _config;
@@ -59,13 +14,13 @@ namespace ZenQL.Parsing
             _config = config;
         }
 
-        public string[] Tokenize(string query)
+        public IReadOnlyCollection<string> Tokenize(string query)
         {
             var tokens = new List<string>();
 
             if (query == null)
             {
-                return tokens.ToArray();
+                return tokens.AsReadOnly();
             }
 
             for (int i = 0; i < query.Length; i++)
@@ -81,7 +36,7 @@ namespace ZenQL.Parsing
                 }
             }
 
-            return tokens.ToArray();
+            return tokens.AsReadOnly();
         }
 
         private string ProcessChar(char item, bool isLastChar)
@@ -91,14 +46,15 @@ namespace ZenQL.Parsing
                 RefreshCurrentToken();
             }
 
-            if (_currentToken.Length == 0 && _config.IsKnownOperator(item.ToString()))
+            if (_currentToken.Length > 1 && _config.IsStartOfKnownOperator(item.ToString()))
             {
                 var token = _currentToken;
                 RefreshCurrentToken();
+                _currentToken += item;
                 return token;
             }
 
-            if (_config.IsStartOfKnownOperator(item.ToString()))
+            if (_config.IsKnownOperator(_currentToken))
             {
                 var token = _currentToken;
                 RefreshCurrentToken();
@@ -110,6 +66,13 @@ namespace ZenQL.Parsing
             if (_inContainer || item != EmptyChar)
             {
                 _currentToken += item;
+            }
+
+            if (_config.IsKnownOperator(_currentToken))
+            {
+                var token = _currentToken;
+                RefreshCurrentToken();
+                return token;
             }
 
             if (_config.ContainsEndTokenOf(item) && _inContainer)
@@ -132,6 +95,8 @@ namespace ZenQL.Parsing
                 RefreshCurrentToken();
                 return token;
             }
+
+            
 
             if (IsLastToken(isLastChar))
             {
